@@ -128,6 +128,13 @@ function main2(L,n,T)
     den
 end
 
+#G = Model2(20,"Square")
+G = Model1(1,1,0.2,20);
+a,b = eigen(G)
+mo = [abs.(b[i])[:,:,1]+abs.(b[i][:,:,1]) for i in 1:length(b)]
+
+
+"""
 L = 51
 n = 10
 T = 10
@@ -135,3 +142,4 @@ den = main2(L,n,T);
 @gif for i in 1:T
     heatmap(1:L,1:L,den[i])
 end
+"""

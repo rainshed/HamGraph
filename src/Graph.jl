@@ -1,29 +1,30 @@
 using LinearAlgebra
+import Base: display
 
-mutable struct Node{}
+mutable struct Node{T}
     pos::Vector{Int64}  # coordinate of the node
-    edges::Vector{}     # edges start from the node
+    edges::Vector{T}     # edges start from the node
 end
 
-function Base.display(node::Node)
+function display(node::Node)
     println("position:",node.pos)
     if node.edges==[]
         println("no edges.")
     else
         println("Edges:")
         for i in 1:length(node.edges)
-            Base.display(node.edges[i])
+            display(node.edges[i])
         end
     end
 end
 
 
-mutable struct Edge{T<:Number}
-    node::Node        # node at which the edge end
+mutable struct Edge{T<:Number,T1}
+    node::Node{T1}        # node at which the edge end
     weight::T         # the weright of Edge
 end
 
-function Base.display(E::Edge)
+function display(E::Edge)
     println("->",E.node.pos,"  ","weight:",E.weight)
 end
 
@@ -34,10 +35,10 @@ The nodes in LatGraph is listed in "nodes", and their coordinates are listed in 
 
 For example, if size = [5,8], the graph is embedded in a 5*8 rectangle. Some of integer coordinates like (3,2) are placed a node, and then [3,2] is an element of "pos".
 """
-mutable struct LatGraph{}
+mutable struct LatGraph{T<:Node}
     size::Vector{Int64}
     pos::Vector{Vector{Int64}}
-    nodes::Array{Node}
+    nodes::Array{T}
 end
 
 function Base.display(G::LatGraph)
@@ -53,7 +54,7 @@ function Base.display(G::LatGraph)
             println()
         end
     else
-        print("display function is to be finish")
+        print("display function is to be finished")
     end
 end
 
@@ -61,7 +62,7 @@ end
 Place a isolate node (a node without edges) at pos.
 """
 function Node(pos::Vector{Int64})
-    Node(pos,[])
+    Node(pos,Edge[])
 end
 
 function AddEdge!(
@@ -88,9 +89,9 @@ end
 
 function LatGraph(
     nodes::Vector{Node},
-    size::Vector{Int64}
+    size::Vector{<:Integer}
 )
-    pos = []
+    pos = Vector{Int}[]
     nArray = Array{Node}(undef,size...)
     for i in 1:length(nodes)
         tpos = nodes[i].pos; 
@@ -99,6 +100,10 @@ function LatGraph(
     end
     LatGraph(size,pos,nArray)
 end
+
+Base.getindex(G::LatGraph,i::Integer...) = G.nodes[i...]
+Base.size(G::LatGraph) = Tuple(G.size)
+position(G::LatGraph) = G.pos
 
 function AddEdge!(
     graph::LatGraph,
@@ -173,12 +178,15 @@ function AddEdge!(
 
 end
 
+function DelAllEdge!(G::LatGraph,pos::Vector{<:Integer})
+    G[pos...].edges = Edge[]
+end
 
 
 function SquareGraph(
     L::Integer
 )
-    pos = [];
+    pos = Vector{Int}[];
     nMatrix = Array{Node}(undef,L,L);
     for i in 1:L
         for j in 1:L
@@ -190,30 +198,14 @@ function SquareGraph(
 end
 
 function LatGraph(f,size::Vector{Int64})
-    pos = Vector[];
+    pos = Vector{Int}[];
     nArray = Array{Node}(undef,size...);
-    if length(size) == 2
-        for i in 1:size[1]
-            for j in 1:size[2]
-                if f([i,j])
-                    push!(pos,[i,j]);
-                    nArray[i,j] = Node([i,j]);
-                end
-            end
+    cube = Iterators.product([1:s for s in size]... )
+    for coor in cube
+        if f(coor)
+            push!(pos,[i for i in coor])
+            nArray[coor...] = Node([i for i in coor])
         end
-    elseif length(size) == 3
-        for i in 1:size[1]
-            for j in 1:size[2]
-                for k in 1:size[3]
-                    if f([i,j,k])
-                        push!(pos,[i,j,k])
-                        nArray[i,j,k] = Node([i,j,k])
-                    end
-                end
-            end
-        end
-    else
-        print("LatGraph function is to be finished")
     end
     LatGraph(size,pos,nArray)
 end
@@ -231,13 +223,32 @@ function LatGraph(poly::Vector{Vector{Int}},size::Vector{Int64})
     LatGraph(f,size);
 end
 
+function StateOnGraph(G::LatGraph, state::Vector)
+    length(G.pos)==length(state) || error("dimension of LatGraph and state doesn't match.")
+    sONg = zeros(eltype(state),G.size...)
+    for i in 1:length(G.pos)
+        sONg[G.pos[i]...] = state[i]
+    end
+    sONg
+end
+
+function LinearAlgebra.eigen(G::LatGraph)
+    H = ConMat(G)
+    vals,vec =  eigen(H)
+    eigvec = [zeros(eltype(vec),G.size...) for i in 1:length(G.pos)]
+    for i in 1:length(G.pos)
+        eigvec[i] = StateOnGraph(G,vec[:,i])
+    end
+    vals,eigvec
+end
+
 
 """
     test if point "pt" is in the polygon form by "plist".
 """
 function PointInPoly(
-    pt::Vector{Int},             # test points
-    plist::Vector{Vector{Int}}   # the vertexes of polygon, two adjacent points form a edge of the polygon.
+    pt::Vector{<:Integer},             # test points
+    plist::Vector{Vector{<:Integer}}   # the vertexes of polygon, two adjacent points form a edge of the polygon.
 )
 
     LenMatch = false;
