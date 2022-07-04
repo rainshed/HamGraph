@@ -54,7 +54,7 @@ function Base.display(G::LatGraph)
             println()
         end
     else
-        print("display function is to be finished")
+        println("display function is to be finished")
     end
 end
 
@@ -202,9 +202,10 @@ function LatGraph(f,size::Vector{Int64})
     nArray = Array{Node}(undef,size...);
     cube = Iterators.product([1:s for s in size]... )
     for coor in cube
-        if f(coor)
-            push!(pos,[i for i in coor])
-            nArray[coor...] = Node([i for i in coor])
+        co = [i for i in coor]
+        if f(co)
+            push!(pos,co)
+            nArray[coor...] = Node(co)
         end
     end
     LatGraph(size,pos,nArray)
@@ -248,7 +249,7 @@ end
 """
 function PointInPoly(
     pt::Vector{<:Integer},             # test points
-    plist::Vector{Vector{<:Integer}}   # the vertexes of polygon, two adjacent points form a edge of the polygon.
+    plist::Vector{<:Vector{<:Integer}}   # the vertexes of polygon, two adjacent points form a edge of the polygon.
 )
 
     LenMatch = false;
@@ -270,10 +271,8 @@ function PointInPoly(
         p1 = plist[i];
         p2 = plist[mod(i,length(plist))+1];
 
-        #println(p1,p2,pt)
 
         if p1[2]==p2[2]
-            #println(p1,p2,pt)
             if pt[2] == p1[2] && min(p1[1],p2[1])<pt[1]<max(p1[1],p2[1])
                 return true;
             else
@@ -293,7 +292,6 @@ function PointInPoly(
                 return true
             end
             
-            #println(p1,p2,x)
             if x<=pt[1]
                 nCorss +=1;
                 if norm([x-p2[1],pt[2]-p2[2]])<1e-7 && p1[2]<p2[2]
